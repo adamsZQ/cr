@@ -51,8 +51,8 @@ class Policy(nn.Module):
             )
         return model(x)
 
-    def select_action(self,state):
-        state = torch.from_numpy(state).float().unsqueeze(0)
+    def select_action(self,state, device):
+        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
         probs = self(state)
         # print('probs',probs.tolist())
         m = Categorical(probs)
@@ -61,8 +61,8 @@ class Policy(nn.Module):
         self.saved_log_probs.append(m.log_prob(action))
         return action.item()
 
-    def select_best_action(self,state):
-        state = torch.from_numpy(state).float().unsqueeze(0)
+    def select_best_action(self,state, device):
+        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
         probs = self(state)
         action = torch.argmax(probs,dim=1).tolist()
         return action[0]

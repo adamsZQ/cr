@@ -25,7 +25,7 @@ with open('/path/mv/movie_rating', 'r') as f:
         audience_rating_list.append(line['audience_rating'])
 
 # get part of datalist
-data_list, useless, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.9, random_state=1)
+data_list, useless, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.9999, random_state=1)
 # train test split
 trainset, testset, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.2, random_state=1)
 print(len(trainset))
@@ -54,13 +54,13 @@ def simulate(model, recommender, max_dialength=7, max_recreward=50, r_c=-1, r_q=
             target = data['movie']
 
             data = [director, genres, critic_rating, country, audience_rating]
-            state = [-1] * len(data).to(device)
+            state = [-1] * len(data)
 
             reward = 0
             for i in range(max_dialength):
                 # select action
                 # print('----------------------------------', i)
-                action = model.select_action(np.array(state))
+                action = model.select_action(np.array(state),device)
                 # print('state', state)
                 #
                 # print('action', action)
