@@ -1,3 +1,4 @@
+import argparse
 import json
 import numpy as np
 
@@ -25,7 +26,7 @@ with open('/path/mv/movie_rating', 'r') as f:
         audience_rating_list.append(line['audience_rating'])
 
 # get part of datalist
-data_list, useless, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.9999, random_state=1)
+data_list, useless, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.999, random_state=1)
 # train test split
 trainset, testset, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.2, random_state=1)
 print(len(trainset))
@@ -258,9 +259,16 @@ if __name__ == '__main__':
         print('using cpu')
         device = torch.device('cpu')
 
-    FILE_PREFIX = '/path/mv/model/'
-    file_name = '5turns/policy_pretrain_1.5979.pkl'
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prefix") # data and model prefix
+    parser.add_argument("--file_name") # choose model(lstm/bilstm)
+    parser.add_argument("--boundary_tags") # add START END tag
+    args = parser.parse_args()
+
+    FILE_PREFIX = args.prefix
+    file_name = args.file_name
+    # file_name = '5turns/policy_pretrain_1.5979.pkl'
     model = torch.load(FILE_PREFIX+file_name).to(device)
 
-    recommender = Recommender('/path/mv/', 'model/knn_model.m', 'ratings_cleaned.dat')
+    recommender = Recommender(FILE_PREFIX, 'model/knn_model.m', 'ratings_cleaned.dat')
     simulate(model, recommender, r_c=-1,max_recreward=50)
