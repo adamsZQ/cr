@@ -15,7 +15,7 @@ genres_list = []
 critic_rating_list = []
 country_list = []
 audience_rating_list = []
-with open('/path/mv/movie_rating', 'r') as f:
+with open('~/path/mv/movie_rating', 'r') as f:
     for line in f:
         line = json.loads(line)
         data_list.append(line)
