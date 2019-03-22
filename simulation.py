@@ -26,7 +26,7 @@ with open('/users4/chzhu/path/mv/movie_rating', 'r') as f:
         audience_rating_list.append(line['audience_rating'])
 
 # get part of datalist
-data_list, useless, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.495, random_state=1)
+data_list, useless, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.97, random_state=1)
 # train test split
 trainset, testset, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.2, random_state=1)
 print(len(trainset))
