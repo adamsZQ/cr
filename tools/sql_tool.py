@@ -3,7 +3,7 @@ import sqlite3
 
 from sklearn.model_selection import train_test_split
 
-db_file = '/path/mv/movie_sql'
+db_file = '/users4/chzhu/path/mv/movie_sql'
 
 
 def insert(id, critic_rating, audience_rating, director, country, genres):
