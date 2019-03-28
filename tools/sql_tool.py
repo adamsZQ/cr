@@ -3,7 +3,7 @@ import sqlite3
 
 from sklearn.model_selection import train_test_split
 
-db_file = '/users4/chzhu/path/mv/movie_sql'
+db_file = '/path/mv/movie_sql'
 
 
 def insert(id, critic_rating, audience_rating, director, country, genres):
@@ -41,6 +41,23 @@ def select_genres(movie):
         c = conn.cursor()
         data = c.execute(sql, (movie,))
         data = [x[0] for x in data]
+        conn.commit()
+        conn.close()
+        return data
+    except Exception as e:
+        print(e)
+
+        conn.commit()
+        conn.close()
+
+
+def select_all_movie_genres():
+    sql = 'SELECT * FROM movie_genres'
+    conn = sqlite3.connect(db_file)
+    try:
+        c = conn.cursor()
+        data = c.execute(sql)
+        data = [x for x in data]
         conn.commit()
         conn.close()
         return data

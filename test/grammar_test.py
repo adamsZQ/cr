@@ -1,4 +1,6 @@
 import collections
+import time
+
 import torch
 
 import numpy as np
@@ -52,6 +54,21 @@ import numpy as np
 # b = x.index(set([2,3]))
 # print(b)
 
-b = torch.randn(3)
-print(b)
-print(torch.max(b,0)[1].tolist())
+# b = torch.randn(3)
+# print(b)
+# print(torch.max(b,0)[1].tolist())
+
+
+# for i in range(100):
+#     success = np.random.choice(2, 1, p=[0.1, 0.9])
+#
+#     a = success[0]
+#     if a == 1:
+#         print('success')
+#     print(success[0])
+
+a = [4,3,2,-1,-1]
+
+index = [i for i in range(len(a)) if a[i] == 1]
+
+print(len(index))

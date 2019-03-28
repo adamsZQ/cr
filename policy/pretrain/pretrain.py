@@ -113,7 +113,7 @@ def save_model(model, file_prefix=None, file_name=None, val_loss='None', best_lo
 
 if __name__ == '__main__':
     FILE_PREFIX = '/path/mv/model/'
-    file_name = '5turns/policy_pretrain_0.7437.pkl'
+    file_name = '5turns/policy_pretrain'
     train(FILE_PREFIX, file_name)
 
     # policy = torch.load(FILE_PREFIX+file_name)
