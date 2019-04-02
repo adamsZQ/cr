@@ -62,7 +62,10 @@ class Policy(nn.Module):
         return action.item()
 
     def select_best_action(self,state, device):
-        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+        if device is not None:
+            state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+        else:
+            state = torch.from_numpy(state).float().unsqueeze(0)
         probs = self(state)
         action = torch.argmax(probs,dim=1).tolist()
         return action[0]

@@ -1,5 +1,7 @@
 import argparse
 import json
+import os
+import sys
 import time
 import profile
 import numpy as np
@@ -17,7 +19,7 @@ genres_list = []
 critic_rating_list = []
 country_list = []
 audience_rating_list = []
-with open('/path/mv/movie_rating', 'r') as f:
+with open(os.path.expanduser('~/path/mv/movie_rating'), 'r') as f:
     for line in f:
         line = json.loads(line)
         data_list.append(line)
@@ -28,7 +30,7 @@ with open('/path/mv/movie_rating', 'r') as f:
         audience_rating_list.append(line['audience_rating'])
 
 # get part of datalist
-data_list, useless, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.97, random_state=1)
+data_list, useless, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.96, random_state=1)
 # data_list, useless, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.9, random_state=1)
 # train test split
 trainset, testset, a, b = train_test_split(data_list, [0] * len(data_list), test_size=0.2, random_state=1)
@@ -66,7 +68,7 @@ def get_genres(movie_id):
     return id_genres_list[movie_id]
 
 
-def simulate(model, recommender, max_dialength=7, max_recreward=50, r_c=-1, r_q=-10):
+def simulate(model, recommender, max_dialength=7, max_recreward=50,r_rec_fail=-10, r_c=-1, r_q=-10):
     print('simulate start')
     num_epochs = 10000
 
@@ -77,13 +79,15 @@ def simulate(model, recommender, max_dialength=7, max_recreward=50, r_c=-1, r_q=
         correct_num = 0
         t_start = time.time()
         t_rec = 0
+        quit_num = 0
+
         for data in trainset:
             director = data['director']
             genres = genres_list.index(set(data['genres'].split('|')))
             critic_rating = data['critic_rating']
             country = data['country']
             audience_rating = data['audience_rating']
-
+            user = data['user']
             target = data['movie']
 
             data = [director, genres, critic_rating, country, audience_rating]
@@ -105,6 +109,7 @@ def simulate(model, recommender, max_dialength=7, max_recreward=50, r_c=-1, r_q=
                     if i == max_dialength - 1:
                         # print('over length')
                         reward = r_q
+                        quit_num = quit_num + 1
                         break
                     else:
                         # print('ask question')
@@ -114,7 +119,7 @@ def simulate(model, recommender, max_dialength=7, max_recreward=50, r_c=-1, r_q=
                 elif action == 5:
                     # reward = max_recreward
                     t_rec_start = time.time()
-                    if recommendation(state, target, recommender):
+                    if recommendation(user, state, target, recommender):
                         # recommend successfully
                         # print('recommend success')
                         reward = max_recreward
@@ -124,7 +129,7 @@ def simulate(model, recommender, max_dialength=7, max_recreward=50, r_c=-1, r_q=
                     else:
                         # fail
                         # print('recommend fail')
-                        reward = r_q
+                        reward = r_rec_fail
                     break
                 else:
                     # print('wrong action')
@@ -155,31 +160,42 @@ def simulate(model, recommender, max_dialength=7, max_recreward=50, r_c=-1, r_q=
             # ave_reward = np.mean(reward_list)
             ave_conv = np.mean(conversation_turn_num)
             accuracy = float(correct_num) / len(trainset)
+            quit_rating = float(quit_num) / len(trainset)
 
-            #val_ave_reward, val_ave_conv, val_accuracy = val(model, recommender, max_dialength, max_recreward,device, r_c, r_q)
+            val_ave_reward, val_ave_conv, val_accuracy ,val_quit_rating = val(model, recommender, max_dialength, max_recreward, r_rec_fail, None, r_c, r_q)
 
             # ave_reward, ave_conv, accuracy = val(model, recommender, max_dialength, max_recreward, r_c, r_q)
             print('Epoch[{}/{}]'.format(epoch, num_epochs) +
                   'train ave_reward: {:.6f}'.format(train_ave_reward) +
                   'accuracy_score: {:.6f}'.format(accuracy) +
-                  'ave_conversation: {:.6f}'.format(ave_conv)
+                  'ave_conversation: {:.6f}'.format(ave_conv) +
+                  'quit_rating: {:.6f}'.format(quit_rating)
             )
-            # print('val_ave_reward: {:.6f}'.format(val_ave_reward) +
-            #       'val_accuracy_score: {:.6f}'.format(val_accuracy) +
-            #       'val_ave_conversation: {:.6f}'.format(val_ave_conv))
+            print('val_ave_reward: {:.6f}'.format(val_ave_reward) +
+                  'val_accuracy_score: {:.6f}'.format(val_accuracy) +
+                  'val_ave_conversation: {:.6f}'.format(val_ave_conv) +
+                  'val_quit_rating: {:.6f}'.format(quit_rating)
+                  )
+
+            sys.stdout.flush()
+
+            if val_accuracy > 0.70:
+                print('save model')
+                torch.save(model, '/home/next/cr/rl_model{}_{}_{}.m'.format(val_accuracy, val_ave_conv, val_quit_rating))
 
 
-def val(model, recommender, max_dialength, max_recreward, device, r_c, r_q):
+def val(model, recommender, max_dialength, max_recreward, r_rec_fail, device, r_c, r_q):
     reward_list = []
     conversation_turn_num = []
     correct_num = 0
+    quit_num = 0
     for data in valset:
         director = data['director']
         genres = genres_list.index(set(data['genres'].split('|')))
         critic_rating = data['critic_rating']
         country = data['country']
         audience_rating = data['audience_rating']
-
+        user = data['user']
         target = data['movie']
 
         data = [director, genres, critic_rating, country, audience_rating]
@@ -188,26 +204,29 @@ def val(model, recommender, max_dialength, max_recreward, device, r_c, r_q):
         reward = 0
         for i in range(max_dialength):
             # select action
+
             action = model.select_best_action(np.array(state), device)
             #print('-------------------------------action', action)
             # if action asks question
             if action in range(5):
                 # if max_dialog length still asking question, give r_q
-                if i == max_dialength:
+                if i == max_dialength - 1:
                     reward = r_q
+                    quit_num = quit_num + 1
                     break
                 else:
                     state[action] = data[action]
                     reward = r_c
             # if action is recommendation
             elif action == 5:
-                if recommendation(state, target, recommender):
+                if recommendation(user, state, target, recommender):
                     # recommend successfully
+                    # print('val_rec_success')
                     reward = max_recreward
                     correct_num = correct_num + 1
                 else:
                     # fail
-                    reward = r_q
+                    reward = r_rec_fail
                 break
             else:
                 model.rewards.append(r_q)
@@ -227,12 +246,13 @@ def val(model, recommender, max_dialength, max_recreward, device, r_c, r_q):
 
     ave_reward = np.mean(reward_list)
     ave_conv = np.mean(conversation_turn_num)
-    accuracy = float(correct_num) / len(data_list)
+    accuracy = float(correct_num) / len(valset)
+    quit_rating = float(quit_num) / len(valset)
 
-    return ave_reward, ave_conv, accuracy
+    return ave_reward, ave_conv, accuracy, quit_rating
 
 
-def recommendation(states, target, recommender, top_k=5):
+def recommendation(user_id, states, target, recommender, top_k=1):
     target = target
     attributes = {}
     i = 0
@@ -273,7 +293,7 @@ def recommendation(states, target, recommender, top_k=5):
             else:
                 pass
     # predict rating of movie matching all attributes
-    item_sort, predict = recommender.predict(line['user'], id_list_match_genre)
+    item_sort, predict = recommender.predict(user_id, id_list_match_genre)
 
     index_upsort = np.argsort(predict)
     index_downsort = index_upsort[::-1]
@@ -308,12 +328,20 @@ if __name__ == '__main__':
     file_name = args.file_name
 
     if FILE_PREFIX is None:
-        FILE_PREFIX ='/path/mv/'
+        FILE_PREFIX = os.path.expanduser('~/path/mv/')
     if file_name is None:
-        file_name = 'model/5turns/policy_pretrain_1.2970.pkl'
+        file_name = 'model/small_data_result/rl_model0.8588235294117647.mod'
 
-    # file_name = '5turns/policy_pretrain_1.5979.pkl'
+    # file_name = '5turns/po    licy_pretrain_1.5979.pkl'
     model = torch.load(FILE_PREFIX+file_name).to(device)
 
     recommender = Recommender(FILE_PREFIX, 'model/knn_model.m', 'ratings_cleaned.dat')
-    simulate(model, recommender, r_c=-1,max_recreward=50)
+    simulate(model, recommender, r_q=-1, r_c=0, r_rec_fail=-1, max_recreward=0.1)
+
+    # val_ave_reward, val_ave_conv, val_accuracy ,val_quit_rating  = test(model,recommender, 7,  device=None, r_q=-1, r_c=0, r_rec_fail=-1, max_recreward=0.1)
+
+    # print('val_ave_reward: {:.6f}'.format(val_ave_reward) +
+    #       'val_accuracy_score: {:.6f}'.format(val_accuracy) +
+    #       'val_ave_conversation: {:.6f}'.format(val_ave_conv) +
+    #       'val_quit_rating: {:.6f}'.format(val_quit_rating)
+    #       )
